@@ -151,6 +151,15 @@ Executar:
 ./learn-modern-cpp
 ```
 
+## Modos de execução (implementado no `main.cpp`)
+
+O binário suporta **dois modos**:
+
+1. **Interativo (REPL)** — rode **sem argumentos** (`./learn-modern-cpp`). O programa fica em loop, mostra o prompt `> `, lê linhas de `stdin` com `std::getline` e mantém as tarefas na memória até `quit` / `exit`, EOF (Ctrl+D) ou erro de leitura. Comandos: `add <título>`, `list`, `help`, `quit`.
+2. **One-shot (argv)** — passe subcomandos na linha de comando, como nas ferramentas Unix clássicas (um processo por comando), alinhado aos exemplos abaixo com `task add` / `task list`. Neste modo as tarefas **não persistem** entre execuções separadas até existir arquivo (Week 4).
+
+Os exemplos com `task` abaixo equivalem a chamar o executável com argumentos; o nome do binário no CMake é `learn-modern-cpp`.
+
 ---
 
 # 🧭 Roadmap
@@ -161,12 +170,22 @@ Executar:
 * `argc/argv`
 * `std::vector`
 * comandos `add` e `list`
+* modo **interativo** opcional: loop + `std::getline` + parsing por linha
 
 Objetivo:
 
 ```
 task add "Estudar C++"
 task list
+```
+
+Modo interativo (mesma sessão, memória até sair):
+
+```
+./learn-modern-cpp
+> add Estudar C++
+> list
+> quit
 ```
 
 ---
