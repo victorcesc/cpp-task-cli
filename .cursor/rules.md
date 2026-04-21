@@ -6,6 +6,8 @@ Explain RAII, ownership and STL usage.
 
 For configuring and compiling this repo, follow `docs/agent-build.md` (out-of-source CMake, build commands, troubleshooting).
 
+For verification and testing commands (smoke checks today; CTest or other suites when added), follow `docs/agent-tests.md`.
+
 ## Code quality (when writing or refactoring code in this repo)
 
 - **Cognitive complexity:** Keep functions easy for humans to follow. If a function accumulates many branches and especially **nested** `if`/`else`/`for`/`while` blocks (common in REPLs, parsers, and dispatchers), **extract small named helpers** so the outer function reads as a short, linear sequence (read → parse → dispatch). Prefer **early returns** over deep pyramids when that clarifies flow.

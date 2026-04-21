@@ -9,6 +9,7 @@
 #include "Task.hpp"
 
 #include <iostream> // std::cin, std::cout, std::flush
+#include <span>     // std::span — argv as pointer+length (no C-style array parameter)
 #include <sstream>  // std::istringstream — split one input line into command + rest
 #include <string>   // std::string — owns task titles in the vector
 #include <string_view> // std::string_view — cheap read-only view of argv tokens (no copy)
@@ -22,15 +23,15 @@ namespace
 
 // After `iss >> cmd`, a following `std::getline(iss, title)` often leaves leading
 // spaces before the title; we strip those so "add   Buy milk" still works.
-void trimLeadingSpaces(std::string& s)
+void trimLeadingSpaces(std::string& text)
 {
-    while (!s.empty() && s.front() == ' ')
+    while (!text.empty() && text.front() == ' ')
     {
-        s.erase(0, 1);
+        text.erase(0, 1);
     }
 }
 
-bool isReplQuitCommand(std::string_view cmd)
+auto isReplQuitCommand(std::string_view cmd) -> bool
 {
     return cmd == "quit" || cmd == "exit";
 }
@@ -140,38 +141,40 @@ void runRepl()
     }
 }
 
-// Non-interactive mode: argc/argv from the shell (one command, then program exits).
-// argv[0] = program path/name; argv[1] = subcommand; further args depend on command.
-int runOnce(int argc, char* argv[])
+// Non-interactive mode: argv from the shell (one command, then program exits).
+// args[0] = program path/name; args[1] = subcommand; further args depend on command.
+// `std::span` is a non-owning view: it does not allocate or free argv — main owns that.
+auto runOnce(std::span<char* const> args) -> int
 {
     // Fresh vector each invocation — a later separate `./prog list` cannot see data
     // from a previous `./prog add` until you persist to a file.
     std::vector<Task> tasks;
     int nextId = 1;
 
-    if (argc < 2)
+    if (args.size() < 2)
     {
         // Defensive: main() normally only calls us when argc >= 2; kept for clarity.
-        std::cout << "Usage: " << argv[0] << " <command> [args...]\n"
-                  << "  " << argv[0] << " add \"<title>\"\n"
-                  << "  " << argv[0] << " list\n"
+        const char* prog = args.empty() ? "task-cli" : args[0];
+        std::cout << "Usage: " << prog << " <command> [args...]\n"
+                  << "  " << prog << " add \"<title>\"\n"
+                  << "  " << prog << " list\n"
                   << "Or run with no arguments for interactive mode.\n";
         return 0;
     }
 
     // string_view: non-owning pointer+length into argv memory; valid for whole main().
-    std::string_view command = argv[1];
+    std::string_view command = args[1];
 
     if (command == "add")
     {
-        // Need exactly: program + "add" + title => argc == 3.
-        if (argc != 3)
+        // Need exactly: program + "add" + title => three argv slots.
+        if (args.size() != 3)
         {
-            std::cout << "Usage: " << argv[0] << " add \"<title>\"\n";
+            std::cout << "Usage: " << args[0] << " add \"<title>\"\n";
             return 1; // non-zero exit = error (convention for shell scripts)
         }
         // Copy C-string from argv into std::string so we own storage in the vector.
-        tasks.emplace_back(nextId++, argv[2]);
+        tasks.emplace_back(nextId++, args[2]);
         std::cout << "Adding task " << tasks.back().id() << ": " << tasks.back().title() << '\n';
         return 0;
     }
@@ -179,9 +182,9 @@ int runOnce(int argc, char* argv[])
     if (command == "list")
     {
         // list must not take extra argv tokens for this minimal implementation.
-        if (argc != 2)
+        if (args.size() != 2)
         {
-            std::cout << "Usage: " << argv[0] << " list\n";
+            std::cout << "Usage: " << args[0] << " list\n";
             return 1;
         }
         if (tasks.empty())
@@ -206,7 +209,7 @@ int runOnce(int argc, char* argv[])
 
 } // namespace
 
-int main(int argc, char* argv[])
+auto main(int argc, char** argv) -> int
 {
     // argc == 1 means only argv[0] (program name) — no subcommand: go interactive.
     if (argc == 1)
@@ -215,6 +218,7 @@ int main(int argc, char* argv[])
         return 0;
     }
 
-    // argc >= 2: delegate to classic CLI argument parsing.
-    return runOnce(argc, argv);
+    // return runOnce(argc, argv);
+    // argc >= 2: build a span over argv (owned by the runtime) and parse one shot.
+    return runOnce(std::span(argv, static_cast<std::size_t>(argc)));
 }

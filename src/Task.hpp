@@ -10,17 +10,17 @@ class Task
 public:
     Task(int taskId, std::string title);
 
-    [[nodiscard]] int id() const noexcept
+    [[nodiscard]] auto id() const noexcept -> int
     {
         return id_;
     }
 
-    [[nodiscard]] const std::string& title() const noexcept
+    [[nodiscard]] auto title() const noexcept -> const std::string&
     {
         return title_;
     }
 
-    [[nodiscard]] bool isDone() const noexcept
+    [[nodiscard]] auto isDone() const noexcept -> bool
     {
         return done_;
     }
