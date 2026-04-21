@@ -6,10 +6,13 @@
 //    per process, same as typical shell tools (state does not persist across runs
 //    until you add file I/O later).
 
+#include "Task.hpp"
+
 #include <iostream> // std::cin, std::cout, std::flush
 #include <sstream>  // std::istringstream — split one input line into command + rest
 #include <string>   // std::string — owns task titles in the vector
 #include <string_view> // std::string_view — cheap read-only view of argv tokens (no copy)
+#include <utility>  // std::move — transfer title into Task without extra copy
 #include <vector>   // std::vector — dynamic array of tasks for this run
 
 // Anonymous namespace: helpers here are "file private" — not visible to other .cpp
@@ -27,12 +30,61 @@ void trimLeadingSpaces(std::string& s)
     }
 }
 
+bool isReplQuitCommand(std::string_view cmd)
+{
+    return cmd == "quit" || cmd == "exit";
+}
+
+void printReplHelp()
+{
+    std::cout << "Commands:\n"
+              << "  add <title>   append a task\n"
+              << "  list          show all tasks\n"
+              << "  help          this message\n"
+              << "  quit          exit\n";
+}
+
+// 1-based ids in output match common CLI expectations.
+void printReplTaskList(const std::vector<Task>& tasks)
+{
+    if (tasks.empty())
+    {
+        std::cout << "(no tasks yet)\n";
+        return;
+    }
+    for (const auto& task : tasks)
+    {
+        std::cout << task.id() << ". " << task.title();
+        if (task.isDone())
+        {
+            std::cout << " [done]";
+        }
+        std::cout << '\n';
+    }
+}
+
+// Everything after "add" on the same line becomes the title (getline keeps spaces).
+void replHandleAdd(std::istringstream& restOfLine, std::vector<Task>& tasks, int& nextId)
+{
+    std::string title;
+    std::getline(restOfLine, title);
+    trimLeadingSpaces(title);
+    if (title.empty())
+    {
+        std::cout << "Usage: add <title>\n";
+        return;
+    }
+    tasks.emplace_back(nextId++, std::move(title));
+    std::cout << "Added task " << tasks.back().id() << ".\n";
+}
+
 // Interactive mode: loop until user types quit/exit or stdin closes (EOF / Ctrl+D).
 void runRepl()
 {
     // Tasks live only for this process. Exiting the program discards them unless
     // you later load/save to disk (your roadmap Week 4).
-    std::vector<std::string> tasks;
+    std::vector<Task> tasks;
+    int nextId = 1;
 
     std::cout << "Task CLI (interactive). Type: add <title> | list | help | quit\n";
 
@@ -61,52 +113,26 @@ void runRepl()
             continue;
         }
 
-        if (cmd == "quit" || cmd == "exit")
+        if (isReplQuitCommand(cmd))
         {
             break;
         }
 
         if (cmd == "help")
         {
-            std::cout << "Commands:\n"
-                      << "  add <title>   append a task\n"
-                      << "  list          show all tasks\n"
-                      << "  help          this message\n"
-                      << "  quit          exit\n";
-            continue; // skip other branches; go to next prompt
+            printReplHelp();
+            continue;
         }
 
         if (cmd == "list")
         {
-            if (tasks.empty())
-            {
-                std::cout << "(no tasks yet)\n";
-            }
-            else
-            {
-                // 1-based numbering matches common CLI / human expectations.
-                for (std::size_t i = 0; i < tasks.size(); ++i)
-                {
-                    std::cout << (i + 1) << ". " << tasks[i] << '\n';
-                }
-            }
+            printReplTaskList(tasks);
             continue;
         }
 
         if (cmd == "add")
         {
-            // Everything after "add" on the same line becomes the title.
-            // We use getline (not >>) so the title can contain spaces.
-            std::string title;
-            std::getline(iss, title);
-            trimLeadingSpaces(title);
-            if (title.empty())
-            {
-                std::cout << "Usage: add <title>\n";
-                continue;
-            }
-            tasks.push_back(title);
-            std::cout << "Added task " << tasks.size() << ".\n";
+            replHandleAdd(iss, tasks, nextId);
             continue;
         }
 
@@ -120,7 +146,8 @@ int runOnce(int argc, char* argv[])
 {
     // Fresh vector each invocation — a later separate `./prog list` cannot see data
     // from a previous `./prog add` until you persist to a file.
-    std::vector<std::string> tasks;
+    std::vector<Task> tasks;
+    int nextId = 1;
 
     if (argc < 2)
     {
@@ -144,8 +171,8 @@ int runOnce(int argc, char* argv[])
             return 1; // non-zero exit = error (convention for shell scripts)
         }
         // Copy C-string from argv into std::string so we own storage in the vector.
-        tasks.push_back(argv[2]);
-        std::cout << "Adding task: " << tasks.back() << '\n';
+        tasks.emplace_back(nextId++, argv[2]);
+        std::cout << "Adding task " << tasks.back().id() << ": " << tasks.back().title() << '\n';
         return 0;
     }
 
@@ -161,9 +188,14 @@ int runOnce(int argc, char* argv[])
         {
             std::cout << "(no tasks in this run)\n";
         }
-        for (const auto& t : tasks)
+        for (const auto& task : tasks)
         {
-            std::cout << "Task: " << t << '\n';
+            std::cout << task.id() << ". " << task.title();
+            if (task.isDone())
+            {
+                std::cout << " [done]";
+            }
+            std::cout << '\n';
         }
         return 0;
     }
