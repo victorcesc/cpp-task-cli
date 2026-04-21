@@ -1,0 +1,17 @@
+# clangd merges this with .clang-tidy; ClangTidy Remove overrides enabled checks.
+# Catch2: do/while in REQUIRE, short names, assertion literals, __COUNTER__ (Clang 22+).
+---
+Diagnostics:
+  ClangTidy:
+    Remove:
+      - cppcoreguidelines-avoid-do-while
+      - readability-identifier-length
+      - readability-magic-numbers
+---
+If:
+  PathMatch:
+    - tests/.*\.cpp
+    - .*/tests/.*\.cpp
+CompileFlags:
+  Add:
+    - -Wno-c2y-extensions

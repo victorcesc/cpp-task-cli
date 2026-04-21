@@ -6,6 +6,7 @@
 //    per process, same as typical shell tools (state does not persist across runs
 //    until you add file I/O later).
 
+#include "ReplLogic.hpp"
 #include "Task.hpp"
 
 #include <iostream> // std::cin, std::cout, std::flush
@@ -13,71 +14,12 @@
 #include <sstream>  // std::istringstream — split one input line into command + rest
 #include <string>   // std::string — owns task titles in the vector
 #include <string_view> // std::string_view — cheap read-only view of argv tokens (no copy)
-#include <utility>  // std::move — transfer title into Task without extra copy
 #include <vector>   // std::vector — dynamic array of tasks for this run
 
 // Anonymous namespace: helpers here are "file private" — not visible to other .cpp
 // translation units and cannot clash with symbols in other files.
 namespace
 {
-
-// After `iss >> cmd`, a following `std::getline(iss, title)` often leaves leading
-// spaces before the title; we strip those so "add   Buy milk" still works.
-void trimLeadingSpaces(std::string& text)
-{
-    while (!text.empty() && text.front() == ' ')
-    {
-        text.erase(0, 1);
-    }
-}
-
-auto isReplQuitCommand(std::string_view cmd) -> bool
-{
-    return cmd == "quit" || cmd == "exit";
-}
-
-void printReplHelp()
-{
-    std::cout << "Commands:\n"
-              << "  add <title>   append a task\n"
-              << "  list          show all tasks\n"
-              << "  help          this message\n"
-              << "  quit          exit\n";
-}
-
-// 1-based ids in output match common CLI expectations.
-void printReplTaskList(const std::vector<Task>& tasks)
-{
-    if (tasks.empty())
-    {
-        std::cout << "(no tasks yet)\n";
-        return;
-    }
-    for (const auto& task : tasks)
-    {
-        std::cout << task.id() << ". " << task.title();
-        if (task.isDone())
-        {
-            std::cout << " [done]";
-        }
-        std::cout << '\n';
-    }
-}
-
-// Everything after "add" on the same line becomes the title (getline keeps spaces).
-void replHandleAdd(std::istringstream& restOfLine, std::vector<Task>& tasks, int& nextId)
-{
-    std::string title;
-    std::getline(restOfLine, title);
-    trimLeadingSpaces(title);
-    if (title.empty())
-    {
-        std::cout << "Usage: add <title>\n";
-        return;
-    }
-    tasks.emplace_back(nextId++, std::move(title));
-    std::cout << "Added task " << tasks.back().id() << ".\n";
-}
 
 // Interactive mode: loop until user types quit/exit or stdin closes (EOF / Ctrl+D).
 void runRepl()
@@ -121,19 +63,19 @@ void runRepl()
 
         if (cmd == "help")
         {
-            printReplHelp();
+            printReplHelp(std::cout);
             continue;
         }
 
         if (cmd == "list")
         {
-            printReplTaskList(tasks);
+            printReplTaskList(tasks, std::cout);
             continue;
         }
 
         if (cmd == "add")
         {
-            replHandleAdd(iss, tasks, nextId);
+            replHandleAdd(iss, tasks, nextId, std::cout);
             continue;
         }
 

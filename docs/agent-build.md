@@ -97,4 +97,4 @@ printf 'help\nquit\n' | ./build/learn-modern-cpp
 
 ## Current targets (sanity check)
 
-The executable target is **`learn-modern-cpp`**, built from the sources listed in `CMakeLists.txt` (as of this guide: `src/main.cpp`, `src/Task.cpp`). If linking fails after adding files, update `add_executable(...)` and reconfigure.
+The executable target is **`learn-modern-cpp`**, built from the sources listed in `CMakeLists.txt` (as of this guide: `src/main.cpp`, `src/Task.cpp`, `src/ReplLogic.cpp`). If linking fails after adding files, update `add_executable(...)` and reconfigure.

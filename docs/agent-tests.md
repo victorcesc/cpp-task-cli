@@ -8,9 +8,15 @@ Same as **`docs/agent-build.md`**: CMake 3.16+, C++20 toolchain, and a configure
 
 ## Current automated test status
 
-The top-level **`CMakeLists.txt`** does **not** yet define `enable_testing()`, CTest labels, or a linked unit-test executable (for example GoogleTest). There is **no** `ctest` suite to run today.
+The top-level **`CMakeLists.txt`** enables **`include(CTest)`** and, when **`BUILD_TESTING`** is enabled (CTest default), uses **FetchContent** to pull **Catch2** and builds the **`unit-tests`** target (`tests/test_task.cpp`, `tests/test_repl.cpp`, linked with `src/Task.cpp` and `src/ReplLogic.cpp`). Tests are registered with **`add_test(NAME unit-tests ...)`**.
 
-Until that exists, treat **build + smoke commands** below as the default verification path.
+**Canonical command** after a successful build:
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+First configure needs network access so CMake can clone Catch2.
 
 ## Always run first: build
 
@@ -19,6 +25,18 @@ From the repository root (see **`docs/agent-build.md`** for options and troubles
 ```bash
 cmake -S . -B build
 cmake --build build
+```
+
+## Unit tests
+
+```bash
+ctest --test-dir build --output-on-failure
+```
+
+Or run the test binary directly:
+
+```bash
+./build/unit-tests
 ```
 
 ## Smoke checks (non-interactive)
@@ -42,22 +60,13 @@ printf 'help\nquit\n' | ./build/learn-modern-cpp
 If **`clang-tidy`** is installed and you want extra signal beyond the compiler:
 
 ```bash
-clang-tidy src/main.cpp src/Task.cpp -p build
+clang-tidy src/main.cpp src/Task.cpp src/ReplLogic.cpp -p build
 ```
+
+**`tests/.clang-tidy`** relaxes the same few Catch2-related checks when you run **`clang-tidy tests/... -p build`**. The repo **`.clangd`** applies equivalent **`ClangTidy: Remove`** entries for the language server (so the IDE matches) and adds **`-Wno-c2y-extensions`** only for **`tests/*.cpp`** for the `__COUNTER__` diagnostic. Production sources under **`src/`** still follow the stricter root **`.clang-tidy`** when linting those paths from the CLI.
 
 Paths and `compile_commands.json` location are described in **`docs/agent-build.md`**.
 
-## When a real test target is added
-
-Update this guide in the **same change** that introduces tests. Typical CMake additions:
-
-1. `enable_testing()` in **`CMakeLists.txt`**
-2. A test executable target (or several) and `add_test(NAME ... COMMAND ...)`
-3. Agents then run **`ctest --test-dir build`** (or the project’s chosen output directory) after `cmake --build build`
-
-Document the **canonical** command here once it exists; avoid duplicating long CMake snippets if **`CMakeLists.txt`** is the source of truth.
-
 ## What not to do
 
-- Do not assume **`ctest`** passes until **`CMakeLists.txt`** actually registers tests.
 - Do not commit **`build/`** or generated test artifacts.
